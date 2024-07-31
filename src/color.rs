@@ -86,6 +86,6 @@ impl Color {
 
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({},{},{})", self.r, self.g, self.b)
+        write!(f, "{:>3} {:>3} {:>3}", self.r, self.g, self.b)
     }
 }
