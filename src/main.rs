@@ -1,7 +1,7 @@
 use clap::Parser;
 use image;
 use termcolor::{self, WriteColor};
-use std::fmt;
+use std::{fmt, io};
 use std::io::Write;
 use std::path::Path;
 
@@ -12,9 +12,17 @@ struct Args {
     #[clap(required = true, num_args = 1)]
     palette_size: usize,
 
-    /// List of paths to image files. A palette will be generated for each image.
+    /// List of image file paths. A palette will be generated for each image.
     #[arg(required = true, num_args = 1..)]
     path: Vec<String>,
+
+    /// Display the colors in hexadecimal.
+    #[clap(long)]
+    hex: bool,
+
+    /// Display the colors in decimal.
+    #[clap(long, short)]
+    decimal: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -36,10 +44,10 @@ impl Color {
         Self { r, g, b }
     }
 
-    pub fn max_channel(colors: &[Color]) -> (Channel, u8) {
+    pub fn max_channel(colors: &[Self]) -> (Channel, u8) {
         use std::cmp::Ordering;
 
-        // let range = |selector: fn(&RGB32) -> u8| -> u8 {
+        // let range = |selector: fn(&Self) -> u8| -> u8 {
         //     let (min, max) = colors
         //         .iter()
         //         .map(selector)
@@ -49,28 +57,33 @@ impl Color {
         //     max - min
         // };
     
-        // let red_range = range(|c| c.r);
-        // let green_range = range(|c| c.g);
-        // let blue_range = range(|c| c.b);
+        // let r = range(|c| c.r);
+        // let g = range(|c| c.g);
+        // let b = range(|c| c.b);
+        // match r.cmp(&g).then(g.cmp(&b)) {
+        //     Ordering::Greater => (Channel::Red, r),
+        //     Ordering::Less => (Channel::Blue, b),
+        //     Ordering::Equal => (Channel::Green, g),
+        // }
 
         let delta = {
-            let low = Color::new(u8::MIN, u8::MIN, u8::MIN);
-            let high = Color::new(u8::MAX, u8::MAX, u8::MAX);
+            let low = Self::new(u8::MIN, u8::MIN, u8::MIN);
+            let high = Self::new(u8::MAX, u8::MAX, u8::MAX);
             let (min, max) = colors.iter().fold((high, low), |(min, max), val| {
                 (
-                    Color::new(
+                    Self::new(
                         u8::min(min.r, val.r),
                         u8::min(min.g, val.g),
                         u8::min(min.b, val.g),
                     ),
-                    Color::new(
+                    Self::new(
                         u8::max(max.r, val.r),
                         u8::max(max.g, val.g),
                         u8::max(max.b, val.g),
                     ),
                 )
             });
-            Color::new(max.r - min.r, max.g - min.g, max.b - min.b)
+            Self::new(max.r - min.r, max.g - min.g, max.b - min.b)
         };
 
         match delta.r.cmp(&delta.g).then(delta.g.cmp(&delta.b)) {
@@ -80,16 +93,20 @@ impl Color {
         }
     }
 
-    pub fn average(colors: &[Color]) -> Color {
+    pub fn average(colors: &[Self]) -> Self {
         let (r, g, b) = colors.iter().fold((0, 0, 0), |sum, val| {
             (sum.0 + val.r as u64, sum.1 + val.g as u64, sum.2 + val.b as u64)
         });
         let len = colors.len();
-        Color::new(
+        Self::new(
             f32::round(r as f32 / len as f32) as u8,
             f32::round(g as f32 / len as f32) as u8,
             f32::round(b as f32 / len as f32) as u8,
         )
+    }
+
+    pub fn to_hex_string(&self) -> String {
+        format!("#{:X}{:X}{:X}", self.r, self.g, self.b)
     }
 }
 
@@ -97,8 +114,8 @@ impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "({}, {}, {}) #{:X}{:X}{:X}",
-            self.r, self.g, self.b, self.r, self.g, self.b
+            "({},{},{})",
+            self.r, self.g, self.b
         )
     }
 }
@@ -158,30 +175,50 @@ fn img_to_colors<P: AsRef<Path>>(path: P) -> Result<Vec<Color>, image::ImageErro
     Ok(colors)
 }
 
-fn main() {
+fn main() -> io::Result<()> {
     let args = Args::parse();
-
     let paths = args.path.into_iter().collect::<Vec<_>>();
 
-    for path in paths {
+    let mut stdout = termcolor::StandardStream::stdout(termcolor::ColorChoice::Always);
+
+    let mut bold_spec = termcolor::ColorSpec::new();
+    bold_spec.set_bold(true);
+
+    for (i, path) in paths.iter().enumerate() {
+
+        stdout.set_color(&bold_spec)?;
+        write!(stdout, "Image {}", i + 1)?;
+        stdout.reset()?;
+        write!(&mut stdout, ": {}\n", path)?;
+    
         let colors = match img_to_colors(&path) {
             Ok(colors) => colors,
-            Err(_) => {
+            Err(err) => {
                 eprintln!("Invalid path or file: {}", path);
-                return;
+                return Err(io::Error::new(io::ErrorKind::Other, err));
             }
         };
 
         let palette = median_cut(colors, args.palette_size);
 
-        let mut stdout = termcolor::StandardStream::stdout(termcolor::ColorChoice::Always);
-
-        writeln!(stdout, "{}", path).unwrap();
         for color in palette.iter() {
             let color_spec = termcolor::ColorSpec::new().set_fg(Some(termcolor::Color::Rgb(color.r, color.g, color.b))).clone();
-            stdout.set_color(&color_spec).unwrap();
-            writeln!(stdout, "{}", color).unwrap();
-            stdout.reset().unwrap();
+            stdout.set_color(&color_spec)?;
+
+            if args.decimal || !args.hex {
+                write!(stdout, "{}", color)?;
+                if args.hex {
+                    write!(stdout, " ")?;
+                }
+            }
+            if args.hex {
+                write!(stdout, "{}", color.to_hex_string())?;
+            }
+            write!(stdout, "\n")?;
+
+            stdout.reset()?;
         }
     }
+
+    Ok(())
 }
