@@ -1,4 +1,3 @@
-use std::cmp;
 use std::fmt;
 
 /// RGB channel.
