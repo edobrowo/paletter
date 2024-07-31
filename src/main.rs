@@ -55,12 +55,12 @@ impl Color {
                     Self::new(
                         u8::min(min.r, val.r),
                         u8::min(min.g, val.g),
-                        u8::min(min.b, val.g),
+                        u8::min(min.b, val.b),
                     ),
                     Self::new(
                         u8::max(max.r, val.r),
                         u8::max(max.g, val.g),
-                        u8::max(max.b, val.g),
+                        u8::max(max.b, val.b),
                     ),
                 )
             });
@@ -126,7 +126,7 @@ fn median_cut(colors: Vec<Color>, palette_size: usize) -> Vec<Color> {
     buckets.push(Bucket::new(0, chan, delta));
     buckets.push(Bucket::new(colors.len(), chan, 0));
 
-    while buckets.len() < palette_size {
+    while buckets.len() <= palette_size {
         let (i, max_bucket) = buckets
             .iter()
             .enumerate()
@@ -219,3 +219,4 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
+
