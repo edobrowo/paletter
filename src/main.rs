@@ -47,25 +47,6 @@ impl Color {
     pub fn max_channel(colors: &[Self]) -> (Channel, u8) {
         use std::cmp::Ordering;
 
-        // let range = |selector: fn(&Self) -> u8| -> u8 {
-        //     let (min, max) = colors
-        //         .iter()
-        //         .map(selector)
-        //         .fold((u8::MAX, u8::MIN), |(min, max), val| {
-        //             (u8::min(min, val), u8::max(max, val))
-        //         });
-        //     max - min
-        // };
-    
-        // let r = range(|c| c.r);
-        // let g = range(|c| c.g);
-        // let b = range(|c| c.b);
-        // match r.cmp(&g).then(g.cmp(&b)) {
-        //     Ordering::Greater => (Channel::Red, r),
-        //     Ordering::Less => (Channel::Blue, b),
-        //     Ordering::Equal => (Channel::Green, g),
-        // }
-
         let delta = {
             let low = Self::new(u8::MIN, u8::MIN, u8::MIN);
             let high = Self::new(u8::MAX, u8::MAX, u8::MAX);
@@ -214,10 +195,12 @@ fn main() -> io::Result<()> {
             if args.hex {
                 write!(stdout, "{}", color.to_hex_string())?;
             }
-            write!(stdout, "\n")?;
+            writeln!(stdout, "")?;
 
             stdout.reset()?;
         }
+
+        writeln!(stdout, "")?;
     }
 
     Ok(())
