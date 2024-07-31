@@ -7,13 +7,13 @@ use termcolor::{self, WriteColor};
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 struct Args {
-    /// Number of colors to represent the image in.
-    #[clap(required = true, num_args = 1)]
+    /// Number of colors in the palette.
+    #[clap(required = true, long, short)]
     palette_size: usize,
 
     /// List of image file paths. A palette will be generated for each image.
-    #[arg(required = true, num_args = 1..)]
-    path: Vec<String>,
+    #[arg(required = true, num_args = 1.., long, short)]
+    files: Vec<String>,
 
     /// Display the colors in hexadecimal.
     #[clap(long)]
@@ -30,7 +30,7 @@ struct Args {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    let paths = args.path.into_iter().collect::<Vec<_>>();
+    let paths = args.files.into_iter().collect::<Vec<_>>();
 
     let mut stdout = termcolor::StandardStream::stdout(termcolor::ColorChoice::Always);
 
