@@ -1,9 +1,9 @@
 use clap::Parser;
 use image;
-use termcolor::{self, WriteColor};
-use std::{fmt, io};
 use std::io::Write;
 use std::path::Path;
+use std::{fmt, io};
+use termcolor::{self, WriteColor};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -25,7 +25,7 @@ struct Args {
     decimal: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Channel {
     Red,
     Green,
@@ -76,7 +76,11 @@ impl Color {
 
     pub fn average(colors: &[Self]) -> Self {
         let (r, g, b) = colors.iter().fold((0, 0, 0), |sum, val| {
-            (sum.0 + val.r as u64, sum.1 + val.g as u64, sum.2 + val.b as u64)
+            (
+                sum.0 + val.r as u64,
+                sum.1 + val.g as u64,
+                sum.2 + val.b as u64,
+            )
         });
         let len = colors.len();
         Self::new(
@@ -93,11 +97,20 @@ impl Color {
 
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "({},{},{})",
-            self.r, self.g, self.b
-        )
+        write!(f, "({},{},{})", self.r, self.g, self.b)
+    }
+}
+
+#[derive(Clone, Debug)]
+struct Bucket {
+    pub index: usize,
+    pub chan: Channel,
+    pub delta: u8,
+}
+
+impl Bucket {
+    pub fn new(index: usize, chan: Channel, delta: u8) -> Self {
+        Self { index, chan, delta }
     }
 }
 
@@ -107,42 +120,42 @@ fn median_cut(colors: Vec<Color>, palette_size: usize) -> Vec<Color> {
     }
 
     let mut colors = colors;
+    let mut buckets: Vec<Bucket> = Vec::new();
 
-    let mut buckets: Vec<usize> = Vec::new();
-    buckets.push(0);
-    buckets.push(colors.len());
+    let (chan, delta) = Color::max_channel(&colors);
+    buckets.push(Bucket::new(0, chan, delta));
+    buckets.push(Bucket::new(colors.len(), chan, 0));
 
     while buckets.len() < palette_size {
-        let v: Vec<(Channel, u8)> = buckets
-            .iter()
-            .zip(buckets.iter().skip(1))
-            .map(|(&a, &b)| Color::max_channel(&colors[a..b]))
-            .collect();
-
-        let max = v
+        let (i, max_bucket) = buckets
             .iter()
             .enumerate()
-            .max_by(|x, y| x.1 .1.cmp(&y.1 .1))
+            .max_by(|(_, x), (_, y)| x.delta.cmp(&y.delta))
             .unwrap();
 
-        let start = buckets[max.0];
-        let end = buckets[max.0 + 1];
-        let bucket = &mut colors[start..end];
+        let start = buckets[i].index;
+        let end = buckets[i + 1].index;
+        let mid = start + (end - start) / 2;
 
-        match max.1 .0 {
-            Channel::Red => bucket.sort_by(|x, y| x.r.cmp(&y.r)),
-            Channel::Green => bucket.sort_by(|x, y| x.g.cmp(&y.g)),
-            Channel::Blue => bucket.sort_by(|x, y| x.b.cmp(&y.b)),
+        let bucket_colors = &mut colors[start..end];
+
+        match max_bucket.chan {
+            Channel::Red => bucket_colors.sort_by(|x, y| x.r.cmp(&y.r)),
+            Channel::Green => bucket_colors.sort_by(|x, y| x.g.cmp(&y.g)),
+            Channel::Blue => bucket_colors.sort_by(|x, y| x.b.cmp(&y.b)),
         };
 
-        let mid = start + bucket.len() / 2;
-        buckets.insert(max.0 + 1, mid);
+        let (chan0, delta0) = Color::max_channel(&colors[start..mid]);
+        let (chan1, delta1) = Color::max_channel(&colors[mid..end]);
+
+        buckets[i] = Bucket::new(start, chan0, delta0);
+        buckets.insert(i + 1, Bucket::new(mid, chan1, delta1));
     }
 
     buckets
         .iter()
         .zip(buckets.iter().skip(1))
-        .map(|(&a, &b)| Color::average(&colors[a..b]))
+        .map(|(a, b)| Color::average(&colors[a.index..b.index]))
         .collect()
 }
 
@@ -166,12 +179,11 @@ fn main() -> io::Result<()> {
     bold_spec.set_bold(true);
 
     for (i, path) in paths.iter().enumerate() {
-
         stdout.set_color(&bold_spec)?;
         write!(stdout, "Image {}", i + 1)?;
         stdout.reset()?;
         write!(&mut stdout, ": {}\n", path)?;
-    
+
         let colors = match img_to_colors(&path) {
             Ok(colors) => colors,
             Err(err) => {
@@ -183,7 +195,9 @@ fn main() -> io::Result<()> {
         let palette = median_cut(colors, args.palette_size);
 
         for color in palette.iter() {
-            let color_spec = termcolor::ColorSpec::new().set_fg(Some(termcolor::Color::Rgb(color.r, color.g, color.b))).clone();
+            let color_spec = termcolor::ColorSpec::new()
+                .set_fg(Some(termcolor::Color::Rgb(color.r, color.g, color.b)))
+                .clone();
             stdout.set_color(&color_spec)?;
 
             if args.decimal || !args.hex {
