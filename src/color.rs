@@ -52,10 +52,12 @@ impl Color {
 
         let delta = Self::new(max.r - min.r, max.g - min.g, max.b - min.b);
 
-        match delta.r.cmp(&delta.g).then(delta.g.cmp(&delta.b)) {
-            cmp::Ordering::Greater => (RGBChannel::Red, delta.r),
-            cmp::Ordering::Less => (RGBChannel::Blue, delta.b),
-            cmp::Ordering::Equal => (RGBChannel::Green, delta.g),
+        if delta.r > delta.g && delta.r > delta.b {
+            (RGBChannel::Red, delta.r)
+        } else if delta.g > delta.r && delta.g > delta.b {
+            (RGBChannel::Green, delta.g)
+        } else {
+            (RGBChannel::Blue, delta.b)
         }
     }
 
