@@ -1,5 +1,5 @@
-use std::fmt;
 use std::cmp;
+use std::fmt;
 
 /// RGB channel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -43,17 +43,15 @@ impl Color {
 
     /// Finds the RGB channel with the highest delta.
     pub fn max_channel_delta(colors: &[Self]) -> (RGBChannel, u8) {
-        let delta = {
-            let high = Self::new(u8::MAX, u8::MAX, u8::MAX);
-            let low = Self::new(u8::MIN, u8::MIN, u8::MIN);
+        let high = Self::new(u8::MAX, u8::MAX, u8::MAX);
+        let low = Self::new(u8::MIN, u8::MIN, u8::MIN);
 
-            let (min, max) = colors.iter().fold((high, low), |(min, max), val| {
-                (Self::min(&min, val), Self::max(&max, val))
-            });
+        let (min, max) = colors.iter().fold((high, low), |(min, max), val| {
+            (Self::min(&min, val), Self::max(&max, val))
+        });
 
-            Self::new(max.r - min.r, max.g - min.g, max.b - min.b)
-        };
-    
+        let delta = Self::new(max.r - min.r, max.g - min.g, max.b - min.b);
+
         match delta.r.cmp(&delta.g).then(delta.g.cmp(&delta.b)) {
             cmp::Ordering::Greater => (RGBChannel::Red, delta.r),
             cmp::Ordering::Less => (RGBChannel::Blue, delta.b),

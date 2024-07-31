@@ -1,46 +1,50 @@
-use crate::color::{RGBChannel, Color};
+use crate::color::{Color, RGBChannel};
 
-/// Bucket represented as an index offset in a sequential container.
+/// Bucket represented as an offset in a sequential container.
 /// Also saves the maximum channel delta and a tag for that channel.
 #[derive(Clone, Debug)]
 struct Bucket {
-    pub index: usize,
+    pub offset: usize,
     pub channel: RGBChannel,
     pub delta: u8,
 }
 
 impl Bucket {
-    pub fn new(index: usize, channel: RGBChannel, delta: u8) -> Self {
-        Self { index, channel, delta }
+    /// Create a new bucket.
+    pub fn new(offset: usize, channel: RGBChannel, delta: u8) -> Self {
+        Self {
+            offset,
+            channel,
+            delta,
+        }
     }
 }
 
 /// Median cut palette quantize implementation.
-/// 
+///
 /// Given a list `colors` and `palette_size`, median cut
 /// finds a set of colors (called the palette) of size `palette_size`
 /// that approximate the distribution of colors in an image.
-/// 
+///
 /// Median cut proceeds by organizing colors into buckets according
 /// to a maximum channel delta heuristic. All colors in the list are
-/// initially placed into one bucket. The maximum difference between
-/// values in each channel is then computed. The bucket is then
-/// sorted by the channel with the higest delta.
-/// 
+/// initially placed into one bucket. The bucket is then sorted by
+/// the channel with the greatest range.
+///
 /// The bucket is then split at the median color. The maximum channel delta
 /// is then computed again for each new bucket. The bucket with the highest
 /// delta is then sorted by that channel, and the process repeats over
 /// all buckets until the number of buckets equals `palette_size`.
-/// 
-/// The resulting palette is given by the averages of each bucket.
-/// 
+///
+/// The resulting palette is the averages within each bucket.
+///
 pub fn median_cut(colors: Vec<Color>, palette_size: usize) -> Vec<Color> {
     if palette_size >= colors.len() {
         return colors;
     }
 
     let mut colors = colors;
-    let mut buckets: Vec<Bucket> = Vec::new();
+    let mut buckets: Vec<Bucket> = Vec::with_capacity(palette_size + 1);
 
     let (chan, delta) = Color::max_channel_delta(&colors);
     buckets.push(Bucket::new(0, chan, delta));
@@ -55,9 +59,9 @@ pub fn median_cut(colors: Vec<Color>, palette_size: usize) -> Vec<Color> {
             .max_by(|(_, x), (_, y)| x.delta.cmp(&y.delta))
             .unwrap();
 
-        let start = buckets[i].index;
-        let end = buckets[i + 1].index;
-        let mid = start + (end - start) / 2;
+        let start = buckets[i].offset;
+        let end = buckets[i + 1].offset;
+        let mid = (start + end) / 2;
 
         let bucket_colors = &mut colors[start..end];
 
@@ -77,6 +81,6 @@ pub fn median_cut(colors: Vec<Color>, palette_size: usize) -> Vec<Color> {
     buckets
         .iter()
         .zip(buckets.iter().skip(1))
-        .map(|(a, b)| Color::average(&colors[a.index..b.index]))
+        .map(|(a, b)| Color::average(&colors[a.offset..b.offset]))
         .collect()
 }

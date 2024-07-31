@@ -1,7 +1,7 @@
 use clap::Parser;
+use paletter::{self, quantize};
 use std::io::{self, Write};
 use termcolor::{self, WriteColor};
-use paletter::{self, quantize};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
