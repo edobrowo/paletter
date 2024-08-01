@@ -20,12 +20,20 @@ struct Args {
     hex: bool,
 
     /// Display the colors in RGB24.
-    #[clap(long, short)]
+    #[clap(long)]
     rgb: bool,
 
     /// Display colors without any color styling.
     #[clap(long, short)]
     uncolored: bool,
+
+    /// Alpha channel threshold.
+    #[clap(long, short)]
+    alpha_thresh: Option<u8>,
+
+    /// Sort by HSV.
+    #[clap(long, short)]
+    sort: bool,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -43,7 +51,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     err_spec.set_fg(Some(termcolor::Color::Red));
 
     for (i, path) in paths.iter().enumerate() {
-        let colors = match paletter::img_to_colors(path) {
+        let alpha_min = args.alpha_thresh.map_or(0, |a| a);
+        let colors = match paletter::img_to_colors(path, alpha_min) {
             Ok(colors) => colors,
             Err(_) => {
                 stderr.set_color(&err_spec)?;
@@ -58,7 +67,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         stdout.reset()?;
         writeln!(&mut stdout, ": {}", path)?;
 
-        let palette = quantize::median_cut(colors, args.palette_size);
+        let mut palette = quantize::median_cut(colors, args.palette_size);
+
+        if args.sort {
+            palette.sort();
+        }
 
         let rgb = args.rgb || !args.hex;
         let hex = args.hex;

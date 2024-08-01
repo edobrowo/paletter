@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt;
 
 /// RGB channel.
@@ -6,6 +7,20 @@ pub enum RGBChannel {
     Red,
     Green,
     Blue,
+}
+
+/// HSV representation
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct HSV {
+    pub h: u8,
+    pub s: u8,
+    pub v: u8,
+}
+
+impl HSV {
+    pub fn new(h: u8, s: u8, v: u8) -> Self {
+        Self { h, s, v }
+    }
 }
 
 /// Color represented in RGB24.
@@ -81,6 +96,48 @@ impl Color {
 
     pub fn to_hex_string(&self) -> String {
         format!("#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
+    }
+
+    /// Create the corresponding HSV representation.
+    fn to_hsv(&self) -> HSV {
+        let rp = self.r as f32 / 255.0;
+        let gp = self.g as f32 / 255.0;
+        let bp = self.b as f32 / 255.0;
+
+        let cmax = f32::max(rp, f32::max(gp, bp));
+        let cmin = f32::min(rp, f32::min(gp, bp));
+        let delta = cmax - cmin;
+
+        let h = 60.0
+            * if cmax == rp {
+                (gp - bp) / delta % 6.0
+            } else if cmax == gp {
+                (bp - rp) / delta + 2.0
+            } else {
+                (rp - gp) / delta + 4.0
+            };
+
+        let s = if cmax != 0.0 { delta / cmax } else { 0.0 };
+
+        let v = cmax;
+
+        HSV::new(
+            f32::round(h) as u8,
+            f32::round(s) as u8,
+            f32::round(v) as u8,
+        )
+    }
+}
+
+impl PartialOrd for Color {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.to_hsv().cmp(&other.to_hsv()))
+    }
+}
+
+impl Ord for Color {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.to_hsv().cmp(&other.to_hsv())
     }
 }
 
