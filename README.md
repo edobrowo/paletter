@@ -1,6 +1,9 @@
 ## Paletter
 Super simple command-line palette quantizer.
 
+## Installation
+TODO
+
 ## Usage
 To generate a palette, simply specify the palette size and an image path.
 ```sh
