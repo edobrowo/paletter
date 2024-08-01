@@ -11,13 +11,13 @@ pub enum RGBChannel {
 
 /// HSV representation
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct HSV {
+struct Hsv {
     pub h: u8,
     pub s: u8,
     pub v: u8,
 }
 
-impl HSV {
+impl Hsv {
     pub fn new(h: u8, s: u8, v: u8) -> Self {
         Self { h, s, v }
     }
@@ -99,7 +99,7 @@ impl Color {
     }
 
     /// Create the corresponding HSV representation.
-    fn to_hsv(&self) -> HSV {
+    fn to_hsv(&self) -> Hsv {
         let rp = self.r as f32 / 255.0;
         let gp = self.g as f32 / 255.0;
         let bp = self.b as f32 / 255.0;
@@ -121,7 +121,7 @@ impl Color {
 
         let v = cmax;
 
-        HSV::new(
+        Hsv::new(
             f32::round(h) as u8,
             f32::round(s) as u8,
             f32::round(v) as u8,
