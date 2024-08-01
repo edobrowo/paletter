@@ -8,11 +8,11 @@ use termcolor::{self, WriteColor};
 #[command(author, version, about)]
 struct Args {
     /// Number of colors in the palette.
-    #[clap(required = true, long, short)]
+    #[clap(required = true)]
     palette_size: usize,
 
     /// List of image file paths. A palette will be generated for each image.
-    #[arg(required = true, num_args = 1.., long, short)]
+    #[arg(required = true, num_args = 1..)]
     files: Vec<String>,
 
     /// Display the colors in hexadecimal.

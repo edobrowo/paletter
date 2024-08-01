@@ -84,3 +84,66 @@ pub fn median_cut(colors: Vec<Color>, palette_size: usize) -> Vec<Color> {
         .map(|(a, b)| Color::average(&colors[a.offset..b.offset]))
         .collect()
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn median_cut() {
+        let colors = [
+            Color::new(254, 182, 47),
+            Color::new(147, 190, 63),
+            Color::new(144, 129, 150),
+            Color::new(247, 200, 162),
+            Color::new(209, 78, 31),
+            Color::new(205, 70, 224),
+            Color::new(169, 152, 157),
+            Color::new(5, 13, 222),
+            Color::new(78, 208, 20),
+            Color::new(98, 205, 81),
+            Color::new(196, 126, 248),
+            Color::new(240, 61, 100),
+            Color::new(85, 254, 97),
+            Color::new(191, 236, 235),
+            Color::new(47, 56, 6),
+            Color::new(81, 67, 179),
+            Color::new(172, 69, 24),
+            Color::new(181, 63, 74),
+            Color::new(95, 229, 108),
+            Color::new(154, 248, 89),
+        ];
+
+        let palette = vec![
+            Color::new(47, 56, 6),
+            Color::new(147, 190, 63),
+            Color::new(5, 13, 222),
+            Color::new(113, 98, 165),
+            Color::new(102, 229, 79),
+            Color::new(211, 91, 55),
+            Color::new(201, 98, 236),
+            Color::new(202, 196, 185),
+        ];
+        assert_eq!(palette, super::median_cut(colors.to_vec(), 8));
+
+        let palette = vec![
+            Color::new(47, 56, 6),
+            Color::new(147, 190, 63),
+            Color::new(5, 13, 222),
+            Color::new(81, 67, 179),
+            Color::new(144, 129, 150),
+            Color::new(88, 207, 51),
+            Color::new(85, 254, 97),
+            Color::new(125, 239, 99),
+            Color::new(211, 62, 87),
+            Color::new(172, 69, 24),
+            Color::new(209, 78, 31),
+            Color::new(254, 182, 47),
+            Color::new(201, 98, 236),
+            Color::new(169, 152, 157),
+            Color::new(247, 200, 162),
+            Color::new(191, 236, 235),
+        ];
+        assert_eq!(palette, super::median_cut(colors.to_vec(), 16));
+    }
+}
