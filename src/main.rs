@@ -80,7 +80,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         for color in palette {
             if colored {
                 let mut color_spec = termcolor::ColorSpec::new();
-                color_spec.set_fg(Some(termcolor::Color::Rgb(color.r, color.g, color.b)));
+                color_spec.set_fg(Some(termcolor::Color::Rgb(color.r(), color.g(), color.b())));
 
                 stdout.set_color(&color_spec)?;
             }

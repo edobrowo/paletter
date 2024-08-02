@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::fmt;
+use std::ops;
 
 /// RGB channel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -7,6 +8,16 @@ pub enum RGBChannel {
     Red,
     Green,
     Blue,
+}
+
+impl RGBChannel {
+    pub fn to_usize(self) -> usize {
+        match self {
+            RGBChannel::Red => 0,
+            RGBChannel::Green => 1,
+            RGBChannel::Blue => 2,
+        }
+    }
 }
 
 /// HSV representation
@@ -26,32 +37,47 @@ impl Hsv {
 /// Color represented in RGB24.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Color {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
+    channels: [u8; 3],
 }
 
 impl Color {
     /// Create a new color.
     pub fn new(r: u8, g: u8, b: u8) -> Self {
-        Self { r, g, b }
+        Self {
+            channels: [r, g, b],
+        }
+    }
+
+    /// Red channel access.
+    pub fn r(&self) -> u8 {
+        self.channels[0]
+    }
+
+    /// Green channel access.
+    pub fn g(&self) -> u8 {
+        self.channels[1]
+    }
+
+    /// Blue channel access.
+    pub fn b(&self) -> u8 {
+        self.channels[2]
     }
 
     /// Channel-wise minimum.
     pub fn min(left: &Self, right: &Self) -> Self {
         Self::new(
-            u8::min(left.r, right.r),
-            u8::min(left.g, right.g),
-            u8::min(left.b, right.b),
+            u8::min(left.r(), right.r()),
+            u8::min(left.g(), right.g()),
+            u8::min(left.b(), right.b()),
         )
     }
 
     /// Channel-wise maximum.
     pub fn max(left: &Self, right: &Self) -> Self {
         Self::new(
-            u8::max(left.r, right.r),
-            u8::max(left.g, right.g),
-            u8::max(left.b, right.b),
+            u8::max(left.r(), right.r()),
+            u8::max(left.g(), right.g()),
+            u8::max(left.b(), right.b()),
         )
     }
 
@@ -64,14 +90,14 @@ impl Color {
             (Self::min(&min, val), Self::max(&max, val))
         });
 
-        let delta = Self::new(max.r - min.r, max.g - min.g, max.b - min.b);
+        let delta = Self::new(max.r() - min.r(), max.g() - min.g(), max.b() - min.b());
 
-        if delta.r > delta.g && delta.r > delta.b {
-            (RGBChannel::Red, delta.r)
-        } else if delta.g > delta.r && delta.g > delta.b {
-            (RGBChannel::Green, delta.g)
+        if delta.r() > delta.g() && delta.r() > delta.b() {
+            (RGBChannel::Red, delta.r())
+        } else if delta.g() > delta.r() && delta.g() > delta.b() {
+            (RGBChannel::Green, delta.g())
         } else {
-            (RGBChannel::Blue, delta.b)
+            (RGBChannel::Blue, delta.b())
         }
     }
 
@@ -79,9 +105,9 @@ impl Color {
     pub fn average(colors: &[Self]) -> Self {
         let (r, g, b) = colors.iter().fold((0, 0, 0), |sum, val| {
             (
-                sum.0 + val.r as u64,
-                sum.1 + val.g as u64,
-                sum.2 + val.b as u64,
+                sum.0 + val.r() as u64,
+                sum.1 + val.g() as u64,
+                sum.2 + val.b() as u64,
             )
         });
 
@@ -95,14 +121,14 @@ impl Color {
     }
 
     pub fn to_hex_string(&self) -> String {
-        format!("#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
+        format!("#{:02X}{:02X}{:02X}", self.r(), self.g(), self.b())
     }
 
     /// Create the corresponding HSV representation. Hue has range [0, 180].
     fn make_hsv(&self) -> Hsv {
-        let rp = self.r as f32 / 255.0;
-        let gp = self.g as f32 / 255.0;
-        let bp = self.b as f32 / 255.0;
+        let rp = self.r() as f32 / 255.0;
+        let gp = self.g() as f32 / 255.0;
+        let bp = self.b() as f32 / 255.0;
 
         let cmax = f32::max(rp, f32::max(gp, bp));
         let cmin = f32::min(rp, f32::min(gp, bp));
@@ -129,6 +155,28 @@ impl Color {
             f32::round(v) as u8,
         )
     }
+
+    /// 256-bucket radix sort.
+    pub fn radix_sort(colors: &mut [Self], channel: RGBChannel) {
+        let channel = channel.to_usize();
+
+        let mut buckets: Vec<Vec<Color>> = vec![vec![]; 256];
+        colors
+            .iter()
+            .for_each(|c| buckets[c[channel] as usize].push(c.clone()));
+
+        for (i, color) in buckets.into_iter().flatten().enumerate() {
+            colors[i] = color;
+        }
+    }
+}
+
+impl ops::Index<usize> for Color {
+    type Output = u8;
+
+    fn index(&self, channel: usize) -> &Self::Output {
+        &self.channels[channel]
+    }
 }
 
 impl PartialOrd for Color {
@@ -145,7 +193,7 @@ impl Ord for Color {
 
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:>3} {:>3} {:>3}", self.r, self.g, self.b)
+        write!(f, "{:>3} {:>3} {:>3}", self.r(), self.g(), self.b())
     }
 }
 

@@ -65,11 +65,7 @@ pub fn median_cut(colors: Vec<Color>, palette_size: usize) -> Vec<Color> {
 
         let bucket_colors = &mut colors[start..end];
 
-        match max_bucket.channel {
-            RGBChannel::Red => bucket_colors.sort_by(|x, y| x.r.cmp(&y.r)),
-            RGBChannel::Green => bucket_colors.sort_by(|x, y| x.g.cmp(&y.g)),
-            RGBChannel::Blue => bucket_colors.sort_by(|x, y| x.b.cmp(&y.b)),
-        };
+        Color::radix_sort(bucket_colors, max_bucket.channel);
 
         let (chan0, delta0) = Color::max_channel_delta(&colors[start..mid]);
         let (chan1, delta1) = Color::max_channel_delta(&colors[mid..end]);
