@@ -1,8 +1,9 @@
 ## Paletter
 Super simple command-line palette quantizer.
+![crabby boi demo](doc/demo.png)
 
 ## Installation
-TODO
+[Download precompiled binaries here](https://github.com/edobrowo/paletter/releases). Thanks [cargo-dist](https://opensource.axo.dev/cargo-dist/) :)
 
 ## Usage
 To generate a palette, simply specify the palette size and an image path.
