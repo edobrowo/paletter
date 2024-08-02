@@ -1,6 +1,10 @@
 ## Paletter
-Super simple command-line palette quantizer.
-![crabby boi demo](doc/demo.png)
+A super simple command-line palette quantizer.
+
+**Example**: Generating a 16-colour palette of [Ferris](https://rustacean.net/):
+<p align="center">
+  <img src="doc/demo.png" alt="crabby boi demo" width="800"/>
+</p>
 
 ## Installation
 [Download precompiled binaries here](https://github.com/edobrowo/paletter/releases). Thanks [cargo-dist](https://opensource.axo.dev/cargo-dist/) :)
