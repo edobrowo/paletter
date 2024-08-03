@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     for (i, path) in paths.iter().enumerate() {
         let alpha_min = args.alpha_thresh.map_or(0, |a| a);
-        let colors = match paletter::img_to_colors(path, alpha_min) {
+        let colors = match paletter::img_to_rgb24(path, alpha_min) {
             Ok(colors) => colors,
             Err(_) => {
                 stderr.set_color(&err_spec)?;

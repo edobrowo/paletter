@@ -1,4 +1,4 @@
-use crate::color::{Color, RGBChannel};
+use crate::color::{RGBChannel, Rgb24};
 
 /// Bucket represented as an offset in a sequential container.
 /// Also saves the maximum channel delta and a tag for that channel.
@@ -20,7 +20,7 @@ impl Bucket {
     }
 }
 
-/// Median cut palette quantize implementation.
+/// Finds the median cut of a vector of RGB24 colors.
 ///
 /// Given a list `colors` and `palette_size`, median cut
 /// finds a set of colors (called the palette) of size `palette_size`
@@ -38,7 +38,7 @@ impl Bucket {
 ///
 /// The resulting palette is the averages within each bucket.
 ///
-pub fn median_cut(colors: Vec<Color>, palette_size: usize) -> Vec<Color> {
+pub fn median_cut(colors: Vec<Rgb24>, palette_size: usize) -> Vec<Rgb24> {
     if palette_size >= colors.len() {
         return colors;
     }
@@ -46,7 +46,7 @@ pub fn median_cut(colors: Vec<Color>, palette_size: usize) -> Vec<Color> {
     let mut colors = colors;
     let mut buckets: Vec<Bucket> = Vec::with_capacity(palette_size + 1);
 
-    let (chan, delta) = Color::max_channel_delta(&colors);
+    let (chan, delta) = Rgb24::max_channel_delta(&colors);
     buckets.push(Bucket::new(0, chan, delta));
 
     // Sentinel bucket used for splitting at the end of the container.
@@ -65,10 +65,10 @@ pub fn median_cut(colors: Vec<Color>, palette_size: usize) -> Vec<Color> {
 
         let bucket_colors = &mut colors[start..end];
 
-        Color::radix_sort(bucket_colors, max_bucket.channel);
+        Rgb24::radix_sort(bucket_colors, max_bucket.channel);
 
-        let (chan0, delta0) = Color::max_channel_delta(&colors[start..mid]);
-        let (chan1, delta1) = Color::max_channel_delta(&colors[mid..end]);
+        let (chan0, delta0) = Rgb24::max_channel_delta(&colors[start..mid]);
+        let (chan1, delta1) = Rgb24::max_channel_delta(&colors[mid..end]);
 
         buckets[i] = Bucket::new(start, chan0, delta0);
         buckets.insert(i + 1, Bucket::new(mid, chan1, delta1));
@@ -77,7 +77,7 @@ pub fn median_cut(colors: Vec<Color>, palette_size: usize) -> Vec<Color> {
     buckets
         .iter()
         .zip(buckets.iter().skip(1))
-        .map(|(a, b)| Color::average(&colors[a.offset..b.offset]))
+        .map(|(a, b)| Rgb24::average(&colors[a.offset..b.offset]))
         .collect()
 }
 
@@ -88,57 +88,57 @@ mod test {
     #[test]
     fn median_cut() {
         let colors = [
-            Color::new(254, 182, 47),
-            Color::new(147, 190, 63),
-            Color::new(144, 129, 150),
-            Color::new(247, 200, 162),
-            Color::new(209, 78, 31),
-            Color::new(205, 70, 224),
-            Color::new(169, 152, 157),
-            Color::new(5, 13, 222),
-            Color::new(78, 208, 20),
-            Color::new(98, 205, 81),
-            Color::new(196, 126, 248),
-            Color::new(240, 61, 100),
-            Color::new(85, 254, 97),
-            Color::new(191, 236, 235),
-            Color::new(47, 56, 6),
-            Color::new(81, 67, 179),
-            Color::new(172, 69, 24),
-            Color::new(181, 63, 74),
-            Color::new(95, 229, 108),
-            Color::new(154, 248, 89),
+            Rgb24::new(254, 182, 47),
+            Rgb24::new(147, 190, 63),
+            Rgb24::new(144, 129, 150),
+            Rgb24::new(247, 200, 162),
+            Rgb24::new(209, 78, 31),
+            Rgb24::new(205, 70, 224),
+            Rgb24::new(169, 152, 157),
+            Rgb24::new(5, 13, 222),
+            Rgb24::new(78, 208, 20),
+            Rgb24::new(98, 205, 81),
+            Rgb24::new(196, 126, 248),
+            Rgb24::new(240, 61, 100),
+            Rgb24::new(85, 254, 97),
+            Rgb24::new(191, 236, 235),
+            Rgb24::new(47, 56, 6),
+            Rgb24::new(81, 67, 179),
+            Rgb24::new(172, 69, 24),
+            Rgb24::new(181, 63, 74),
+            Rgb24::new(95, 229, 108),
+            Rgb24::new(154, 248, 89),
         ];
 
         let palette = vec![
-            Color::new(47, 56, 6),
-            Color::new(147, 190, 63),
-            Color::new(5, 13, 222),
-            Color::new(113, 98, 165),
-            Color::new(102, 229, 79),
-            Color::new(211, 91, 55),
-            Color::new(201, 98, 236),
-            Color::new(202, 196, 185),
+            Rgb24::new(47, 56, 6),
+            Rgb24::new(147, 190, 63),
+            Rgb24::new(5, 13, 222),
+            Rgb24::new(113, 98, 165),
+            Rgb24::new(102, 229, 79),
+            Rgb24::new(211, 91, 55),
+            Rgb24::new(201, 98, 236),
+            Rgb24::new(202, 196, 185),
         ];
         assert_eq!(palette, super::median_cut(colors.to_vec(), 8));
 
         let palette = vec![
-            Color::new(47, 56, 6),
-            Color::new(147, 190, 63),
-            Color::new(5, 13, 222),
-            Color::new(81, 67, 179),
-            Color::new(144, 129, 150),
-            Color::new(88, 207, 51),
-            Color::new(85, 254, 97),
-            Color::new(125, 239, 99),
-            Color::new(211, 62, 87),
-            Color::new(172, 69, 24),
-            Color::new(209, 78, 31),
-            Color::new(254, 182, 47),
-            Color::new(201, 98, 236),
-            Color::new(169, 152, 157),
-            Color::new(247, 200, 162),
-            Color::new(191, 236, 235),
+            Rgb24::new(47, 56, 6),
+            Rgb24::new(147, 190, 63),
+            Rgb24::new(5, 13, 222),
+            Rgb24::new(81, 67, 179),
+            Rgb24::new(144, 129, 150),
+            Rgb24::new(88, 207, 51),
+            Rgb24::new(85, 254, 97),
+            Rgb24::new(125, 239, 99),
+            Rgb24::new(211, 62, 87),
+            Rgb24::new(172, 69, 24),
+            Rgb24::new(209, 78, 31),
+            Rgb24::new(254, 182, 47),
+            Rgb24::new(201, 98, 236),
+            Rgb24::new(169, 152, 157),
+            Rgb24::new(247, 200, 162),
+            Rgb24::new(191, 236, 235),
         ];
         assert_eq!(palette, super::median_cut(colors.to_vec(), 16));
     }
