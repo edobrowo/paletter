@@ -144,7 +144,7 @@ impl Rgb24 {
         )
     }
 
-    /// Channel-based radix sort.
+    /// Sorts a slice of colors using channel-based radix sort.
     pub fn radix_sort(colors: &mut [Self], channel: RGBChannel) {
         let channel = channel.to_usize();
 
@@ -156,6 +156,13 @@ impl Rgb24 {
         for (i, color) in buckets.into_iter().flatten().enumerate() {
             colors[i] = color;
         }
+    }
+
+    pub fn level_index(&self, level: usize) -> usize {
+        let inv = 7 - level;
+        let mask = 0b10000000 >> level;
+        ((self.r() & mask) >> inv << 2 | (self.g() & mask) >> inv << 1 | (self.b() & mask) >> inv)
+            as usize
     }
 }
 
@@ -304,5 +311,22 @@ mod test {
         let color = Rgb24::new(110, 181, 114);
         let hsv = Hsv::new(62, 39, 71);
         assert_eq!(hsv, color.make_hsv());
+    }
+
+    #[test]
+    fn level_handle() {
+        let color = Rgb24::new(73, 153, 101);
+        // 0b01001001
+        // 0b10011001
+        // 0b01100101
+
+        assert_eq!(color.level_index(0), 2);
+        assert_eq!(color.level_index(1), 5);
+        assert_eq!(color.level_index(2), 1);
+        assert_eq!(color.level_index(3), 2);
+        assert_eq!(color.level_index(4), 6);
+        assert_eq!(color.level_index(5), 1);
+        assert_eq!(color.level_index(6), 0);
+        assert_eq!(color.level_index(7), 7);
     }
 }

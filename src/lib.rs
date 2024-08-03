@@ -1,4 +1,5 @@
 pub mod color;
+pub mod octree;
 pub mod quantize;
 use std::path::Path;
 
