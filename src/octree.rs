@@ -137,8 +137,14 @@ impl Octree {
     }
 
     /// Whether the octree is empty.
-    pub fn empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+}
+
+impl Default for Octree {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -162,7 +168,7 @@ impl Octree {
         let mut handle = Self::HANDLE_ROOT;
 
         for level in 0..Self::MAX_HEIGHT - 1 {
-            let index = color.level_index(level as usize);
+            let index = color.level_index(level);
 
             if self[handle].child(index).is_some_and(|c| c == Self::EMPTY) {
                 self.octants[handle::level(handle)].push(Octant::new_branch());
