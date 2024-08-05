@@ -1,6 +1,6 @@
 pub mod color;
+pub mod median_cut;
 pub mod octree;
-pub mod quantize;
 use std::path::Path;
 
 type ResColors = Result<Vec<color::Rgb24>, image::ImageError>;

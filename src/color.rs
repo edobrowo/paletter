@@ -33,7 +33,17 @@ impl Rgb24 {
             channels: [r, g, b],
         }
     }
+}
 
+impl ops::Index<usize> for Rgb24 {
+    type Output = u8;
+
+    fn index(&self, channel: usize) -> &Self::Output {
+        &self.channels[channel]
+    }
+}
+
+impl Rgb24 {
     /// Accesses the red channel.
     pub fn r(&self) -> u8 {
         self.channels[0]
@@ -163,14 +173,6 @@ impl Rgb24 {
         let mask = 0b10000000 >> level;
         ((self.r() & mask) >> inv << 2 | (self.g() & mask) >> inv << 1 | (self.b() & mask) >> inv)
             as usize
-    }
-}
-
-impl ops::Index<usize> for Rgb24 {
-    type Output = u8;
-
-    fn index(&self, channel: usize) -> &Self::Output {
-        &self.channels[channel]
     }
 }
 
