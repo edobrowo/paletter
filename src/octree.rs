@@ -18,7 +18,7 @@ impl Handle {
         assert!(index < 2 << 29);
         let level = (level as u32) << 29;
         let index = index as u32;
-        Handle { 0: level | index }
+        Handle(level | index)
     }
 
     /// Extracts the level bits.
@@ -54,6 +54,17 @@ pub enum Octant {
     Leaf(Leaf),
 }
 
+impl From<&Rgb24> for Octant {
+    fn from(color: &Rgb24) -> Self {
+        Self::Leaf(Leaf {
+            count: 1,
+            r: color.r() as u64,
+            g: color.g() as u64,
+            b: color.b() as u64,
+        })
+    }
+}
+
 impl Octant {
     /// Creates a new branch octant.
     pub fn new_branch() -> Self {
@@ -62,18 +73,8 @@ impl Octant {
         })
     }
 
-    /// Creates a new leaf octant.
-    pub fn new_leaf(color: &Rgb24) -> Self {
-        Self::Leaf(Leaf {
-            count: 1,
-            r: color.r() as u64,
-            g: color.g() as u64,
-            b: color.b() as u64,
-        })
-    }
-
     /// Creates leaf octant from summed RGB values.
-    pub fn new_reduced(count: u64, r: u64, g: u64, b: u64) -> Self {
+    pub fn new_leaf(count: u64, r: u64, g: u64, b: u64) -> Self {
         Self::Leaf(Leaf { count, r, g, b })
     }
 
@@ -135,7 +136,7 @@ impl Octree {
     const MAX_BRANCH_HEIGHT: usize = 8;
 
     const HANDLE_ROOT: Handle = Handle::new(0, 0);
-    const EMPTY: Handle = Handle::new(Octree::MAX_BRANCH_HEIGHT - 1, 2 << 29 - 1);
+    const EMPTY: Handle = Handle::new(Octree::MAX_BRANCH_HEIGHT - 1, (2 << 29) - 1);
 
     /// Creates a new RGB octree.
     pub fn new() -> Self {
@@ -200,7 +201,7 @@ impl Octree {
         let index = color.level_index(level);
 
         if self[handle].child(index).is_some_and(|c| c == Self::EMPTY) {
-            self.octants[handle.level()].push(Octant::new_leaf(color));
+            self.octants[handle.level()].push(Octant::from(color));
             let child_handle = Handle::new(level, self.octants[level].len());
             self[handle].set_child(index, child_handle);
         } else {
@@ -244,7 +245,7 @@ impl Octree {
                                 };
                             (acc.0 + count, acc.1 + r, acc.2 + g, acc.3 + b)
                         });
-                        Octant::new_reduced(count, r as u64, g as u64, b as u64)
+                        Octant::new_leaf(count, r, g, b)
                     }
                     Octant::Leaf(_) => unreachable!(),
                 };
