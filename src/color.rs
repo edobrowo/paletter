@@ -11,6 +11,7 @@ pub enum RGBChannel {
 }
 
 impl RGBChannel {
+    /// Converts an RGBChannel enum value to a `usize` index.
     pub fn to_usize(self) -> usize {
         match self {
             RGBChannel::Red => 0,
@@ -60,20 +61,20 @@ impl Rgb24 {
     }
 
     /// Finds the channel-wise minimum.
-    pub fn min(left: &Self, right: &Self) -> Self {
+    pub fn min(lhs: &Self, rhs: &Self) -> Self {
         Self::new(
-            u8::min(left.r(), right.r()),
-            u8::min(left.g(), right.g()),
-            u8::min(left.b(), right.b()),
+            u8::min(lhs.r(), rhs.r()),
+            u8::min(lhs.g(), rhs.g()),
+            u8::min(lhs.b(), rhs.b()),
         )
     }
 
     /// Finds the channel-wise maximum.
-    pub fn max(left: &Self, right: &Self) -> Self {
+    pub fn max(lhs: &Self, rhs: &Self) -> Self {
         Self::new(
-            u8::max(left.r(), right.r()),
-            u8::max(left.g(), right.g()),
-            u8::max(left.b(), right.b()),
+            u8::max(lhs.r(), rhs.r()),
+            u8::max(lhs.g(), rhs.g()),
+            u8::max(lhs.b(), rhs.b()),
         )
     }
 
@@ -168,6 +169,7 @@ impl Rgb24 {
         }
     }
 
+    /// Computes the octree level index of an RGB24.
     pub fn level_index(&self, level: usize) -> usize {
         let inv = 7 - level;
         let mask = 0b10000000 >> level;
@@ -203,6 +205,7 @@ struct Hsv {
 }
 
 impl Hsv {
+    /// Creates a new HSV color.
     pub fn new(h: u8, s: u8, v: u8) -> Self {
         Self { h, s, v }
     }
@@ -213,7 +216,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn max_channel_delta() {
+    fn color_max_channel_delta() {
         let colors = vec![
             Rgb24::new(89, 226, 133),
             Rgb24::new(124, 168, 127),
@@ -253,7 +256,7 @@ mod test {
     }
 
     #[test]
-    fn average() {
+    fn color_average() {
         let colors = vec![
             Rgb24::new(216, 126, 83),
             Rgb24::new(87, 73, 32),
@@ -293,7 +296,7 @@ mod test {
     }
 
     #[test]
-    fn make_hsv() {
+    fn color_make_hsv() {
         let color = Rgb24::new(2, 117, 186);
         let hsv = Hsv::new(101, 99, 73);
         assert_eq!(hsv, color.make_hsv());
@@ -316,7 +319,7 @@ mod test {
     }
 
     #[test]
-    fn level_handle() {
+    fn color_level_index() {
         let color = Rgb24::new(73, 153, 101);
         // 0b01001001
         // 0b10011001

@@ -16,6 +16,7 @@ impl Handle {
     pub const fn new(level: usize, index: usize) -> Handle {
         assert!(level < 8);
         assert!(index < 2 << 29);
+
         let level = (level as u32) << 29;
         let index = index as u32;
         Handle(level | index)
@@ -86,6 +87,14 @@ impl Octant {
         }
     }
 
+    /// Checks whether a child octant at a particular index exists.
+    pub fn child_exists(&self, index: usize) -> bool {
+        match self {
+            Octant::Branch(Branch { children }) => children[index] != Octree::EMPTY,
+            Octant::Leaf(_) => false,
+        }
+    }
+
     /// Sets a child octant. Does nothing if the specified octant is a leaf.
     pub fn set_child(&mut self, index: usize, handle: Handle) {
         match self {
@@ -97,7 +106,9 @@ impl Octant {
     /// Retrieves the number of child octants.
     pub fn child_count(&self) -> usize {
         match self {
-            Octant::Branch(Branch { children }) => children.len(),
+            Octant::Branch(Branch { children }) => {
+                children.iter().filter(|&&c| c != Octree::EMPTY).count()
+            }
             Octant::Leaf(_) => 0,
         }
     }
@@ -129,22 +140,31 @@ impl Octant {
 /// RGB-indexed octree.
 #[derive(Debug)]
 pub struct Octree {
+    root: Octant,
     octants: [Vec<Octant>; Octree::MAX_BRANCH_HEIGHT],
 }
 
 impl Octree {
+    const MIN_BRANCH_HEIGHT: usize = 0;
     const MAX_BRANCH_HEIGHT: usize = 8;
 
-    const HANDLE_ROOT: Handle = Handle::new(0, 0);
     const EMPTY: Handle = Handle::new(Octree::MAX_BRANCH_HEIGHT - 1, (2 << 29) - 1);
 
     /// Creates a new RGB octree.
     pub fn new() -> Self {
-        let mut octants: [Vec<Octant>; Octree::MAX_BRANCH_HEIGHT] = Default::default();
-        octants[0].push(Octant::new_branch());
-        Self {
+        let mut octree = Self {
+            root: Octant::new_branch(),
             octants: Default::default(),
+        };
+
+        for index in 0..Self::MAX_BRANCH_HEIGHT {
+            octree.octants[Self::MIN_BRANCH_HEIGHT].push(Octant::new_branch());
+
+            let branch_handle = octree.make_handle(Self::MIN_BRANCH_HEIGHT);
+            octree.root.set_child(index, branch_handle);
         }
+
+        octree
     }
 
     /// Total number of branch and leaf octants.
@@ -155,6 +175,11 @@ impl Octree {
     /// Whether the octree is empty.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// Builds the octree from a list of colors.
+    pub fn build(&mut self, colors: &[Rgb24]) {
+        colors.iter().for_each(|color| self.add_color(color));
     }
 }
 
@@ -179,40 +204,51 @@ impl ops::IndexMut<Handle> for Octree {
 }
 
 impl Octree {
+    /// Add a new branch to a octant.
+    pub fn add_branch(&mut self, handle: Handle, index: usize) {
+        self.octants[handle.level()].push(Octant::new_branch());
+        let branch_handle = self.make_handle(handle.level());
+        self[handle].set_child(index, branch_handle)
+    }
+
+    /// Add a new leaf to an octant.
+    pub fn add_leaf(&mut self, handle: Handle, index: usize, color: &Rgb24) {
+        self.octants[handle.level()].push(Octant::from(color));
+        let leaf_handle = self.make_handle(handle.level());
+        self[handle].set_child(index, leaf_handle);
+    }
+
+    /// Create a new handle for this octree.
+    fn make_handle(&self, level: usize) -> Handle {
+        Handle::new(level, self.octants[level].len())
+    }
+}
+
+impl Octree {
     /// Adds a color via index traversal.
     pub fn add_color(&mut self, color: &Rgb24) {
-        let mut handle = Self::HANDLE_ROOT;
+        let index = color.level_index(Self::MIN_BRANCH_HEIGHT);
+        let mut handle = self.root.child(index).unwrap();
 
-        for level in 0..Self::MAX_BRANCH_HEIGHT - 1 {
+        for level in 1..Self::MAX_BRANCH_HEIGHT - 1 {
             let index = color.level_index(level);
+            dbg!(index, handle.level(), handle.index());
 
-            if self[handle].child(index).is_some_and(|c| c == Self::EMPTY) {
-                self.octants[handle.level()].push(Octant::new_branch());
-                let child_handle = Handle::new(level, self.octants[level].len());
-                self[handle].set_child(index, child_handle);
+            if !self[handle].child_exists(index) {
+                self.add_branch(handle, index);
             }
 
-            if let Some(child) = self[handle].child(index) {
-                handle = child;
-            }
+            handle = self[handle].child(index).unwrap();
         }
 
         let level = Self::MAX_BRANCH_HEIGHT - 1;
         let index = color.level_index(level);
-
-        if self[handle].child(index).is_some_and(|c| c == Self::EMPTY) {
-            self.octants[handle.level()].push(Octant::from(color));
-            let child_handle = Handle::new(level, self.octants[level].len());
-            self[handle].set_child(index, child_handle);
+        if !self[handle].child_exists(index) {
+            self.add_leaf(handle, index, color);
         } else {
-            let child = self[handle].child(index).unwrap();
-            self[child].add_color(color);
+            let child_handle = self[handle].child(index).unwrap();
+            self[child_handle].add_color(color);
         }
-    }
-
-    /// Builds the octree from a list of colors.
-    pub fn build(&mut self, colors: &[Rgb24]) {
-        colors.iter().for_each(|color| self.add_color(color));
     }
 
     /// Reduces an octree to the specified number of leaf octants.
@@ -266,6 +302,7 @@ pub fn octree(colors: &[Rgb24], palette_size: usize) -> Vec<Rgb24> {
 
     let mut octree = Octree::new();
     octree.build(colors);
+    dbg!(&octree);
 
     octree.into_palette(palette_size)
 }
@@ -275,7 +312,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn handles() {
+    fn octree_handles() {
         let handle = Handle::new(0, 0);
         assert_eq!(handle.level(), 0);
         assert_eq!(handle.index(), 0);

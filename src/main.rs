@@ -1,5 +1,5 @@
 use clap::Parser;
-use paletter::median_cut;
+use paletter::octree;
 use std::error::Error;
 use std::io::Write;
 use termcolor::{self, WriteColor};
@@ -67,7 +67,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         stdout.reset()?;
         writeln!(&mut stdout, ": {}", path)?;
 
-        let mut palette = median_cut::median_cut(colors, args.palette_size);
+        // let mut palette = median_cut::median_cut(colors, args.palette_size);
+        let mut palette = octree::octree(&colors, args.palette_size);
 
         if args.sort {
             palette.sort();
