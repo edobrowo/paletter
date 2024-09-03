@@ -32,6 +32,10 @@ pub enum Method {
 
 /// Quantize a palette with the specified method.
 pub fn solve(method: Method, colors: Vec<Rgb24>, palette_size: usize) -> Vec<Rgb24> {
+    if palette_size >= colors.len() {
+        return colors.to_vec();
+    }
+
     match method {
         Method::MedianCut => median_cut(colors, palette_size),
         Method::Octree => octree(&colors, palette_size),

@@ -39,10 +39,6 @@ impl Bucket {
 /// The resulting palette is the averages within each bucket.
 ///
 pub fn median_cut(colors: Vec<Rgb24>, palette_size: usize) -> Vec<Rgb24> {
-    if palette_size >= colors.len() {
-        return colors;
-    }
-
     let mut colors = colors;
     let mut buckets: Vec<Bucket> = Vec::with_capacity(palette_size + 1);
 
