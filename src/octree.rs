@@ -10,13 +10,13 @@ type Index = usize;
 type Size = Index;
 
 /// Branch octants hold handles to 8 child octants.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Branch {
     pub children: [Handle; 8],
 }
 
 /// Leaf octants hold summed RGB values.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Leaf {
     pub count: u64,
     pub r: u64,
@@ -25,7 +25,7 @@ struct Leaf {
 }
 
 /// RGB octant.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Octant {
     Branch(Branch),
     Leaf(Leaf),
@@ -112,14 +112,20 @@ impl Octant {
     }
 
     /// Consumes the octant and returns the averaged RGB value.
-    pub fn into_rgb24(self) -> Option<Rgb24> {
+    pub fn make_rgb24(&self) -> Option<Rgb24> {
         match self {
             Octant::Branch(_) => None,
-            Octant::Leaf(Leaf { count, r, g, b }) => Some(Rgb24::new(
-                (r / count) as u8,
-                (g / count) as u8,
-                (b / count) as u8,
-            )),
+            Octant::Leaf(Leaf { count, r, g, b }) => {
+                if *count > 0 {
+                    Some(Rgb24::new(
+                        (r / count) as u8,
+                        (g / count) as u8,
+                        (b / count) as u8,
+                    ))
+                } else {
+                    None
+                }
+            }
         }
     }
 }
@@ -239,6 +245,7 @@ impl Octree {
 
             self.octants[handle] = match self.octants[handle] {
                 Octant::Branch(Branch { children }) => {
+                    // Sum the child colors.
                     let (count, r, g, b) = children.iter().filter(|&&h| h != Octree::EMPTY).fold(
                         (0, 0, 0, 0),
                         |acc, &h| {
@@ -249,6 +256,14 @@ impl Octree {
                             }
                         },
                     );
+
+                    // Clear the child reference counts.
+                    for &h in children.iter().filter(|&&h| h != Octree::EMPTY) {
+                        if let Octant::Leaf(leaf) = &mut self.octants[h] {
+                            leaf.count = 0;
+                        }
+                    }
+
                     Octant::new_leaf(count, r, g, b)
                 }
                 Octant::Leaf(_) => unreachable!(),
@@ -259,7 +274,7 @@ impl Octree {
 
         self.octants
             .iter()
-            .filter_map(|octant| octant.into_rgb24())
+            .filter_map(|octant| octant.make_rgb24())
             .collect()
     }
 }

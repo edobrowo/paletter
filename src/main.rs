@@ -89,7 +89,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let hex = args.hex;
         let colored = !args.uncolored;
 
-        for color in palette {
+        for color in &palette {
             if colored {
                 let mut color_spec = termcolor::ColorSpec::new();
                 color_spec.set_fg(Some(termcolor::Color::Rgb(color.r(), color.g(), color.b())));
