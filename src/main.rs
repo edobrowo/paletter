@@ -1,8 +1,10 @@
-use clap::Parser;
-use paletter::octree;
 use std::error::Error;
 use std::io::Write;
+
+use clap::Parser;
 use termcolor::{self, WriteColor};
+
+use paletter::Method;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -14,6 +16,10 @@ struct Args {
     /// List of image file paths. A palette will be generated for each image.
     #[arg(required = true, num_args = 1..)]
     files: Vec<String>,
+
+    /// Quantization method.
+    #[clap(long)]
+    method: Option<Method>,
 
     /// Display the colors in hexadecimal.
     #[clap(long)]
@@ -67,8 +73,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         stdout.reset()?;
         writeln!(&mut stdout, ": {}", path)?;
 
-        // let mut palette = median_cut::median_cut(colors, args.palette_size);
-        let mut palette = octree::octree(&colors, args.palette_size);
+        let method = if let Some(method) = args.method {
+            method
+        } else {
+            Method::MedianCut
+        };
+
+        let mut palette = paletter::solve(method, colors, args.palette_size);
 
         if args.sort {
             palette.sort();
