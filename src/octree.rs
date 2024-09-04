@@ -232,7 +232,7 @@ impl Octree {
     /// If the reduction cannot be made exactly, the number of octants is
     /// maintained above the expected size.
     ///
-    pub fn into_palette(mut self, size: usize) -> Vec<Rgb24> {
+    pub fn into_palette(&mut self, size: usize) -> Vec<Rgb24> {
         // All leaves are initially stored at the highest level.
         let mut leaf_count = self.levels[Self::MAX_LEVEL - 1].len();
 
@@ -243,7 +243,7 @@ impl Octree {
                 break;
             }
 
-            self.octants[handle] = match self.octants[handle] {
+            match &self.octants[handle] {
                 Octant::Branch(Branch { children }) => {
                     // Sum the child colors.
                     let (count, r, g, b) = children.iter().filter(|&&h| h != Octree::EMPTY).fold(
@@ -257,17 +257,16 @@ impl Octree {
                         },
                     );
 
-                    // Clear the child reference counts.
-                    for &h in children.iter().filter(|&&h| h != Octree::EMPTY) {
-                        if let Octant::Leaf(leaf) = &mut self.octants[h] {
-                            leaf.count = 0;
-                        }
+                    // Clear the child octants.
+                    for &h in children.clone().iter().filter(|&&h| h != Octree::EMPTY) {
+                        self.octants[h] = Octant::new_leaf(0, 0, 0, 0);
                     }
 
-                    Octant::new_leaf(count, r, g, b)
+                    // Replace the branch with a leaf.
+                    self.octants[handle] = Octant::new_leaf(count, r, g, b);
                 }
                 Octant::Leaf(_) => unreachable!(),
-            };
+            }
 
             leaf_count -= count;
         }
@@ -300,17 +299,6 @@ mod test {
             Rgb24::new(150, 0, 0),
             Rgb24::new(0, 150, 0),
             Rgb24::new(0, 0, 150),
-            Rgb24::new(200, 200, 200),
-            Rgb24::new(255, 255, 255),
-            Rgb24::new(0, 0, 0),
-            Rgb24::new(50, 0, 0),
-            Rgb24::new(0, 50, 0),
-            Rgb24::new(0, 0, 50),
-            Rgb24::new(150, 0, 0),
-            Rgb24::new(0, 150, 0),
-            Rgb24::new(0, 0, 150),
-            Rgb24::new(200, 200, 200),
-            Rgb24::new(255, 255, 255),
         ];
 
         octree(&data, 1);

@@ -97,14 +97,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 stdout.set_color(&color_spec)?;
             }
 
-            if rgb {
-                write!(stdout, "{color}")?;
-                hex.then(|| write!(stdout, " "));
-            }
-            if hex {
-                write!(stdout, "{}", color.to_hex_string())?;
-            }
-            writeln!(stdout)?;
+            // if rgb {
+            //     write!(stdout, "{color}")?;
+            //     hex.then(|| write!(stdout, " "));
+            // }
+            // if hex {
+            //     write!(stdout, "{}", color.to_hex_string())?;
+            // }
+            // writeln!(stdout)?;
 
             stdout.reset()?;
         }
