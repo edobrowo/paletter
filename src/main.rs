@@ -97,19 +97,31 @@ fn main() -> Result<(), Box<dyn Error>> {
                 stdout.set_color(&color_spec)?;
             }
 
-            // if rgb {
-            //     write!(stdout, "{color}")?;
-            //     hex.then(|| write!(stdout, " "));
-            // }
-            // if hex {
-            //     write!(stdout, "{}", color.to_hex_string())?;
-            // }
-            // writeln!(stdout)?;
+            if rgb {
+                write!(stdout, "{color}")?;
+                hex.then(|| write!(stdout, " "));
+            }
+            if hex {
+                write!(stdout, "{}", color.to_hex_string())?;
+            }
+            writeln!(stdout)?;
 
             stdout.reset()?;
         }
 
         writeln!(stdout)?;
+
+        if method == Method::Octree {
+            stdout.reset()?;
+
+            let mut color_spec = termcolor::ColorSpec::new();
+            color_spec.set_fg(Some(termcolor::Color::Rgb(91, 94, 97)));
+            color_spec.set_italic(true);
+
+            stdout.set_color(&color_spec)?;
+
+            writeln!(&mut stdout, "Actual palette size: {}", palette.len())?;
+        }
     }
 
     Ok(())

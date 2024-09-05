@@ -24,7 +24,7 @@ pub fn img_to_rgb24<P: AsRef<Path>>(path: P, alpha_min: u8) -> ResColors {
     Ok(colors)
 }
 
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum Method {
     MedianCut,
     Octree,

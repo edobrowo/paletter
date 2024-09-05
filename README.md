@@ -12,28 +12,32 @@ A super simple command-line palette quantizer.
 ## Usage
 To generate a palette, simply specify the palette size and an image path.
 ```sh
-paletter -p 256 -f "/path/to/your/image.png"
+paletter 256 "/path/to/your/image.png"
 ```
 
 You can generate a palette for any number of images.
 ```sh
-paletter -p 1024 -f "image1.png" "image2.jpg" "image3.webp"
+paletter 1024 "image1.png" "image2.jpg" "image3.webp"
 ```
 
 Paletter supports decimal RGB and hexadecimal display formats. RGB is the default display mode.
 ```sh
-paletter -p 256 -f "image.png" --rgb --hex --uncolored
+paletter 256 "image.png" --rgb --hex --uncolored
 ```
 
 An alpha channel threshold can be specified to prevent transparent values from counting toward the palette. This is useful in quantizing images with transparent backgrounds.
 ```sh
-paletter -p 16 -f "image.svg" --alpha-thresh 255
+paletter 16 "image.svg" --alpha-thresh 255
 ```
 
 The output can be left unsorted or sorted by HSV. The colored output can be disabled.
 ```sh
-paletter -p 256 -f "image.jpg" --rgb --sort --uncolored
+paletter 256 "image.jpg" --rgb --sort --uncolored
 ```
 
-## Details
-Paletter applies [median cut](https://en.wikipedia.org/wiki/Median_cut) to reduce the image color space.
+Paletter can use different quantization methods. Currently, `median-cut` and `octree` are supported, with `median-cut` used by default.
+```sh
+paletter "image.png" --method octree
+```
+
+**Note**: Octree quantization is not guaranteed to produce a palette of the expected size without loss of information. Paletter outputs the final result and indicates the actual palette size at the end of the color list. This issue is less likely to occur as the palette size increases.

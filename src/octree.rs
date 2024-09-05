@@ -158,19 +158,14 @@ impl Octree {
         }
     }
 
-    /// Total number of branch and leaf octants.
+    /// Retrieves the total number of branch and leaf octants.
     pub fn len(&self) -> usize {
         self.octants.len()
     }
 
-    /// Whether the octree is empty.
+    /// Determines whether the octree is empty.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
-    }
-
-    /// Builds the octree from a list of colors.
-    pub fn build(&mut self, colors: &[Rgb24]) {
-        colors.iter().for_each(|color| self.add_color(color));
     }
 }
 
@@ -181,8 +176,67 @@ impl Default for Octree {
 }
 
 impl Octree {
+    /// Builds the octree from a list of colors.
+    pub fn build(&mut self, colors: &[Rgb24]) {
+        colors.iter().for_each(|color| self.add_color(color));
+    }
+
+    /// Reduces an octree to the specified number of leaf octants.
+    ///
+    /// If the reduction cannot be made exactly, the number of octants is
+    /// maintained above the expected size.
+    ///
+    pub fn into_palette(&mut self, size: usize) -> Vec<Rgb24> {
+        // All leaves are initially stored at the highest level.
+        let mut leaf_count = self.levels[Self::MAX_LEVEL - 1].len();
+
+        for &handle in self.levels.iter().rev().skip(1).flatten() {
+            let count = self.octants[handle].child_count();
+
+            // Reduction not possible, skip to next branch.
+            if leaf_count - count + 1 < size {
+                continue;
+            }
+
+            match &self.octants[handle] {
+                Octant::Branch(branch) => {
+                    // Sum the child colors into a fresh leaf.
+                    let new_leaf = self.branch_to_leaf(branch);
+
+                    // If count is zero, the branch had no leaf children.
+                    // No more reductions were possible, so the loop must exit.
+                    if count == 0 {
+                        break;
+                    }
+
+                    // Clear child octants.
+                    let children = branch.children;
+                    for &h in children.iter().filter(|&&h| h != Octree::EMPTY) {
+                        self.octants[h] = Octant::new_leaf(0, 0, 0, 0);
+                    }
+
+                    // Replace the branch with a leaf.
+                    self.octants[handle] = new_leaf;
+                }
+                Octant::Leaf(_) => unreachable!(),
+            }
+
+            leaf_count = leaf_count - count + 1;
+        }
+
+        self.octants
+            .iter()
+            .filter_map(|octant| octant.make_rgb24())
+            .collect()
+    }
+
+    /// Create a fresh handle.
+    fn make_handle(&self) -> Handle {
+        self.len()
+    }
+
     /// Add a new branch to a octant.
-    pub fn add_branch(&mut self, handle: Handle, index: Index, level: Index) {
+    fn add_branch(&mut self, handle: Handle, index: Index, level: Index) {
         let branch_handle = self.make_handle();
         self.octants.push(Octant::new_branch());
         self.octants[handle].set_child(index, branch_handle);
@@ -190,22 +244,15 @@ impl Octree {
     }
 
     /// Add a new leaf to an octant.
-    pub fn add_leaf(&mut self, handle: Handle, index: Index, level: Index, color: &Rgb24) {
+    fn add_leaf(&mut self, handle: Handle, index: Index, level: Index, color: &Rgb24) {
         let leaf_handle = self.make_handle();
         self.octants.push(Octant::from(color));
         self.octants[handle].set_child(index, leaf_handle);
         self.levels[level].push(leaf_handle)
     }
 
-    /// Create a fresh handle.
-    fn make_handle(&self) -> Handle {
-        self.len()
-    }
-}
-
-impl Octree {
     /// Adds a color via index traversal.
-    pub fn add_color(&mut self, color: &Rgb24) {
+    fn add_color(&mut self, color: &Rgb24) {
         let mut handle = Self::ROOT;
 
         for level in Self::MIN_LEVEL..Self::MAX_LEVEL - 1 {
@@ -227,54 +274,21 @@ impl Octree {
         }
     }
 
-    /// Reduces an octree to the specified number of leaf octants.
-    ///
-    /// If the reduction cannot be made exactly, the number of octants is
-    /// maintained above the expected size.
-    ///
-    pub fn into_palette(&mut self, size: usize) -> Vec<Rgb24> {
-        // All leaves are initially stored at the highest level.
-        let mut leaf_count = self.levels[Self::MAX_LEVEL - 1].len();
-
-        for &handle in self.levels.iter().rev().skip(1).flatten() {
-            let count = self.octants[handle].child_count();
-
-            if leaf_count - count < size {
-                break;
-            }
-
-            match &self.octants[handle] {
-                Octant::Branch(Branch { children }) => {
-                    // Sum the child colors.
-                    let (count, r, g, b) = children.iter().filter(|&&h| h != Octree::EMPTY).fold(
-                        (0, 0, 0, 0),
-                        |acc, &h| {
-                            if let Octant::Leaf(Leaf { count, r, g, b }) = self.octants[h] {
-                                (acc.0 + count, acc.1 + r, acc.2 + g, acc.3 + b)
-                            } else {
-                                acc
-                            }
-                        },
-                    );
-
-                    // Clear the child octants.
-                    for &h in children.clone().iter().filter(|&&h| h != Octree::EMPTY) {
-                        self.octants[h] = Octant::new_leaf(0, 0, 0, 0);
-                    }
-
-                    // Replace the branch with a leaf.
-                    self.octants[handle] = Octant::new_leaf(count, r, g, b);
-                }
-                Octant::Leaf(_) => unreachable!(),
-            }
-
-            leaf_count -= count;
-        }
-
-        self.octants
+    /// Creates a new leaf out of a branch by summing child colors.
+    fn branch_to_leaf(&self, branch: &Branch) -> Octant {
+        let (count, r, g, b) = branch
+            .children
             .iter()
-            .filter_map(|octant| octant.make_rgb24())
-            .collect()
+            .filter(|&&h| h != Octree::EMPTY)
+            .fold((0, 0, 0, 0), |acc, &h| {
+                if let Octant::Leaf(Leaf { count, r, g, b }) = self.octants[h] {
+                    (acc.0 + count, acc.1 + r, acc.2 + g, acc.3 + b)
+                } else {
+                    acc
+                }
+            });
+
+        Octant::new_leaf(count, r, g, b)
     }
 }
 
@@ -293,14 +307,48 @@ mod test {
     fn octree_solve() {
         let data = vec![
             Rgb24::new(0, 0, 0),
-            Rgb24::new(50, 0, 0),
-            Rgb24::new(0, 50, 0),
-            Rgb24::new(0, 0, 50),
-            Rgb24::new(150, 0, 0),
-            Rgb24::new(0, 150, 0),
-            Rgb24::new(0, 0, 150),
+            Rgb24::new(53, 52, 12),
+            Rgb24::new(201, 210, 204),
+            Rgb24::new(55, 51, 13),
+            Rgb24::new(221, 210, 204),
+            Rgb24::new(201, 223, 199),
+            Rgb24::new(201, 102, 204),
+            Rgb24::new(23, 56, 124),
+            Rgb24::new(43, 126, 241),
+            Rgb24::new(24, 16, 123),
+            Rgb24::new(23, 55, 101),
+            Rgb24::new(2, 15, 0),
+            Rgb24::new(2, 102, 150),
+            Rgb24::new(200, 201, 201),
+            Rgb24::new(100, 100, 100),
+            Rgb24::new(0, 0, 200),
+            Rgb24::new(255, 255, 255),
         ];
 
-        octree(&data, 1);
+        let palette = octree(&data, 1);
+        let expected = vec![
+            Rgb24::new(35, 43, 59),
+            Rgb24::new(215, 219, 212),
+            Rgb24::new(201, 102, 204),
+            Rgb24::new(15, 76, 197),
+        ];
+        assert_eq!(palette, expected);
+        let palette = octree(&data, 2);
+        assert_eq!(palette, expected);
+        let palette = octree(&data, 3);
+        assert_eq!(palette, expected);
+        let palette = octree(&data, 4);
+        assert_eq!(palette, expected);
+
+        let palette = octree(&data, 5);
+        let expected = vec![
+            Rgb24::new(35, 43, 59),
+            Rgb24::new(215, 219, 212),
+            Rgb24::new(201, 102, 204),
+            Rgb24::new(43, 126, 241),
+            Rgb24::new(2, 102, 150),
+            Rgb24::new(0, 0, 200),
+        ];
+        assert_eq!(palette, expected);
     }
 }
